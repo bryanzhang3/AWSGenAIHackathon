@@ -1,148 +1,195 @@
-# 🚀 VibeCAD
+# 🚀 Cursor for CAD - Fusion 360 AI Copilot
 
-> **Text-to-CAD generation made effortless.**  
-> Turning imagination into 3D reality with natural language.
-
----
-
-## 🧠 Overview
-
-**VibeCAD** reimagines how designers, engineers, and beginners interact with CAD.  
-Built in **24 hours** at a hackathon, our project transforms plain English into **parametric 3D models**, bridging creativity and engineering with a single prompt.
-
-We combine the power of:
-- **Claude (via Amazon Bedrock)** for natural language understanding  
-- **Onshape API** for real-time CAD generation  
-- **MCP server** for model orchestration and data flow  
-- **Next.js + OPENSCAD** for a clean, intuitive front-end and fast rendering  
+**AI copilot embedded directly inside Fusion 360. Type what you want, AI builds it.**
 
 ---
 
-## 💡 Why VibeCAD?
+## What Is This?
 
-CAD design is **intimidating**—especially for beginners.  
-Complex software, steep learning curves, and countless constraints can discourage early learners and innovators.
+A chat panel that lives **INSIDE Fusion 360** (like Cursor's sidebar in VS Code).
 
-VibeCAD **lowers the barrier to entry** by:
-- Converting **simple text prompts** into editable CAD models  
-- Automating repetitive design steps with **AI-driven precision**  
-- Providing a **web-based interface** that’s modern, responsive, and open-source  
-- Enabling **instant iteration**, letting users refine models with natural feedback loops (“make it taller,” “add holes,” “round the edges”)  
+Type: `"Create a mounting bracket"`
+→ 3D model appears in your viewport ✨
+
+**You work in ONE app: Fusion 360. Everything happens there.**
 
 ---
 
-## ⚙️ How It Works
+## Quick Start (30 Minutes)
 
-1. **User Input** – You describe what you want (e.g., “a wheel with spokes and a hollow center”).  
-2. **Language Processing (Claude)** – Claude parses your intent and extracts geometric parameters.  
-3. **MCP Server** – Acts as the bridge, translating structured JSON into CAD instructions.  
-4. **Onshape API + OPENSCAD** – Builds the model dynamically, generating and rendering your design in seconds.  
-5. **Next.js Frontend** – Displays the model, allowing export, rotation, and refinement directly in the browser.
+### Prerequisites
 
----
+1. **Fusion 360** - https://www.autodesk.com/products/fusion-360/free-trial
+2. **Node.js 18+** - `node --version`
+3. **Anthropic API Key** - https://console.anthropic.com/settings/keys
 
-## 🧰 Getting Started
+### Setup
 
-Run VibeCAD locally in just a few steps:
-
-### 1️⃣ Start the backend
+**Step 1: Backend (5 min)**
 ```bash
 cd backend
-npm run build
-./start-backend.sh
+
+# Install
+npm install express cors dotenv @anthropic-ai/sdk
+
+# Add API key
+echo "ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE" > .env
+
+# Start (leave running)
+node backend-fusion.js
 ```
 
-### 2️⃣ Start the frontend
+✅ **Test:** Open http://localhost:3001/health
+
+**Step 2: Install Add-in (2 min)**
+
+**Mac:**
 ```bash
-cd frontend
-pnpm dev
+cp -r fusion-addin/FusionCADCopilot ~/Library/Application\ Support/Autodesk/Autodesk\ Fusion\ 360/API/AddIns/
 ```
 
-Once both services are running, open **http://localhost:3000** in your browser to start creating CAD models from natural language prompts.
+**Windows:**
+```cmd
+xcopy fusion-addin\FusionCADCopilot "%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\FusionCADCopilot\" /E /I
+```
+
+**Step 3: Run in Fusion (1 min)**
+
+1. Open Fusion 360
+2. **Tools > Add-Ins > Scripts and Add-Ins**
+3. Click **FusionCADCopilot** → **Run**
+4. Panel appears on right! 🎉
 
 ---
 
-## 🔄 System Architecture
+## Test It Works
 
-```plaintext
-┌────────────────────────────┐
-│        User Prompt         │
-│ "Create a gear with 8 teeth"│
-└──────────────┬─────────────┘
-               │
-               ▼
-┌────────────────────────────┐
-│ Claude (via Bedrock)       │
-│ Parses natural language → JSON │
-└──────────────┬─────────────┘
-               │
-               ▼
-┌────────────────────────────┐
-│ MCP Server                 │
-│ Orchestrates data flow,    │
-│ validates parameters        │
-└──────────────┬─────────────┘
-               │
-               ▼
-┌────────────────────────────┐
-│ Onshape API + OPENSCAD     │
-│ Generates CAD geometry     │
-│ & renders the model        │
-└──────────────┬─────────────┘
-               │
-               ▼
-┌────────────────────────────┐
-│ Next.js Frontend           │
-│ Displays 3D model preview  │
-│ Allows live adjustments    │
-└────────────────────────────┘
+Type in the chat panel:
+
+**Demo 1:**
+```
+Create a 50mm cube
+```
+→ Cube appears ✅
+
+**Demo 2:**
+```
+Add a 10mm hole through the center
+```
+→ Hole appears ✅
+
+**Demo 3:**
+```
+Create a mounting bracket, 80x50x10mm, with 4 M6 holes in corners
+```
+→ Complete bracket ✅
+
+---
+
+## How It Works
+
+```
+┌──────────────────────────────────┐
+│  Fusion 360 (only window open)  │
+│  ┌─────────────┬──────────────┐ │
+│  │ 3D Viewport │ 🤖 Chat      │ │
+│  │             │              │ │
+│  │ Model       │ Type here    │ │
+│  │ appears     │ AI generates │ │
+│  │ here        │ Python code  │ │
+│  │             │ [Execute]    │ │
+│  └─────────────┴──────────────┘ │
+└──────────────────────────────────┘
+         ↕ API calls
+┌──────────────────────────────────┐
+│  Backend (terminal, background)  │
+│  Claude Sonnet 4 API            │
+└──────────────────────────────────┘
+```
+
+**You stay in Fusion 360. Backend is invisible.**
+
+---
+
+## Project Structure
+
+```
+├── fusion-addin/FusionCADCopilot/
+│   ├── FusionCADCopilot.py         # Python add-in
+│   ├── resources/palette.html       # Chat UI
+│   └── FusionCADCopilot.manifest
+│
+├── backend/
+│   ├── backend-fusion.js            # ⭐ START THIS
+│   ├── routes/fusion.js             # API endpoints
+│   └── prompts/fusion360_system.txt # AI prompt
+│
+└── docs/                            # Reference docs
+    ├── YC_STRATEGY_CURSOR_FOR_CAD.md
+    ├── IMPLEMENTATION_PLAN.md
+    └── CAD_INTEGRATION_RESEARCH.md
 ```
 
 ---
 
-## 🌍 Key Features
+## Troubleshooting
 
-✅ **Natural Language to CAD** — No CAD experience needed.  
-✅ **Onshape Integration** — Real-time model generation and cloud rendering.  
-✅ **Interactive Preview** — View and edit your model right in the browser.  
-✅ **Open-source and Extensible** — Built for developers, makers, and educators.  
-✅ **Hackathon Ready** — Developed from concept to prototype in under 24 hours.
+**Backend won't start:**
+```bash
+# Check API key
+cat backend/.env
 
----
+# Check port 3001 is free
+lsof -i :3001
+```
 
-## 🧩 Tech Stack
+**Panel doesn't appear:**
+```bash
+# Verify install (Mac)
+ls ~/Library/Application\ Support/Autodesk/Autodesk\ Fusion\ 360/API/AddIns/FusionCADCopilot/
+```
 
-| Layer | Tools Used |
-|-------|-------------|
-| Frontend | Next.js, Express.js, TailwindCSS |
-| CAD Engine | OPENSCAD, Onshape API |
-| Backend | MCP Server, npm, pnpm, Node.js |
-| AI Processing | Claude (via Amazon Bedrock) |
-| Hosting | Vercel |
+**"Cannot connect":**
+- Backend running? `curl http://localhost:3001/health`
+- Check `.env` has `ANTHROPIC_API_KEY`
 
----
-
-## 🚀 The Vision
-
-We built VibeCAD to make **3D design accessible to everyone** — from first-time makers to seasoned engineers.  
-Our long-term vision is to **democratize CAD creation**, enabling anyone to build, iterate, and learn through language.
-
-> *If you can describe it, you can design it.*
+**Code doesn't execute:**
+- Check Fusion Text Commands for errors
+- Try: "Create a 50mm cube"
+- Must be in Design mode
 
 ---
 
-## 🧑‍💻 Team
+## Tech Stack
 
-Created by a passionate team of three builders, engineers, and designers at a 36-hour hackathon.  
-Fueled by caffeine and the belief that AI can make creation more human.
-
----
-
-## 🧱 Try It Yourself (Coming Soon)
-
-We’re working to make VibeCAD publicly accessible!  
-Stay tuned for deployment updates and open beta access.
+- **Platform:** Fusion 360 (10M+ users, 28.8% pro market share)
+- **Add-in:** Python + HTML/JS
+- **Backend:** Node.js + Express
+- **AI:** Claude Sonnet 4
 
 ---
 
-> Made with ❤️ by Team Bcs  
+## Features
+
+- ✅ Natural language → 3D models
+- ✅ Real-time generation
+- ✅ Multi-turn conversations ("make it bigger")
+- ✅ Code editing
+- ✅ Quick templates
+- ✅ Embedded in Fusion 360
+
+---
+
+## Documentation
+
+- **README.md** (this file) - Quick setup
+- **docs/YC_STRATEGY_CURSOR_FOR_CAD.md** - Full YC strategy
+- **docs/IMPLEMENTATION_PLAN.md** - Technical details
+
+---
+
+**Ready? Start backend, load add-in, type "Create a 50mm cube"! ✨**
+
+---
+
+*Built for YC W2026 - "Cursor for CAD"*
