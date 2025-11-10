@@ -6,10 +6,10 @@
  * Run with: node backend-fusion.js
  */
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const fusionRoutes = require('./routes/fusion');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import fusionRoutes from './routes/fusion.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;

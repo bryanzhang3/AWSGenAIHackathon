@@ -3,11 +3,15 @@
  * Handles AI-powered CAD code generation
  */
 
-const express = require('express');
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import Anthropic from '@anthropic-ai/sdk';
+
 const router = express.Router();
-const fs = require('fs');
-const path = require('path');
-const Anthropic = require('@anthropic-ai/sdk');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -209,4 +213,4 @@ function generateConversationId() {
     return `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-module.exports = router;
+export default router;
