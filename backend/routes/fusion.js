@@ -75,6 +75,7 @@ router.post('/generate', async (req, res) => {
         const response = await anthropic.messages.create({
             model: 'claude-sonnet-4-20250514',  // Latest Claude Sonnet
             max_tokens: 4096,
+            temperature: 0.3,  // Lower temperature for more precise code generation
             system: SYSTEM_PROMPT,
             messages: messages
         });
