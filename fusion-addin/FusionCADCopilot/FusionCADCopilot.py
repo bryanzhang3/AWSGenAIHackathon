@@ -119,7 +119,7 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
         """
         try:
             # Show loading state
-            _palette.sendInfoToHTML('loading', 'Generating code...')
+            self.send_to_palette('loading', 'Generating code...')
 
             # Prepare request
             request_data = {
@@ -147,44 +147,53 @@ class PaletteHTMLEventHandler(adsk.core.HTMLEventHandler):
             self.conversation_id = result.get('conversationId')
 
             # Send code to UI for display
-            _palette.sendInfoToHTML('code', code)
+            self.send_to_palette('code', code)
 
             # Auto-execute the code
             success, message = self.execute_code(code)
 
             if success:
-                _palette.sendInfoToHTML('success', message)
+                self.send_to_palette('success', message)
             else:
-                _palette.sendInfoToHTML('error', f'Execution failed: {message}')
+                self.send_to_palette('error', f'Execution failed: {message}')
 
         except urllib.error.HTTPError as e:
             error_body = e.read().decode('utf-8') if e.fp else str(e)
-            _palette.sendInfoToHTML('error', f'Backend error: {e.code} - {error_body}')
+            self.send_to_palette('error', f'Backend error: {e.code} - {error_body}')
 
         except urllib.error.URLError as e:
-            _palette.sendInfoToHTML('error', f'Cannot connect to backend. Is it running on {BACKEND_URL}? Error: {str(e)}')
+            self.send_to_palette('error', f'Cannot connect to backend. Is it running on {BACKEND_URL}? Error: {str(e)}')
 
         except Exception as e:
             error_msg = f'Error generating code: {str(e)}\n{traceback.format_exc()}'
-            _palette.sendInfoToHTML('error', error_msg)
+            self.send_to_palette('error', error_msg)
+
+    def send_to_palette(self, action, data):
+        """Helper to send properly formatted messages to palette"""
+        try:
+            if _palette:
+                message = json.dumps({'action': action, 'data': data})
+                _palette.sendInfoToHTML('message', message)
+        except:
+            pass
 
     def handle_execute(self, code):
         """
         Execute user-provided code (when they edit and re-run)
         """
         try:
-            _palette.sendInfoToHTML('loading', 'Executing code...')
+            self.send_to_palette('loading', 'Executing code...')
 
             success, message = self.execute_code(code)
 
             if success:
-                _palette.sendInfoToHTML('success', message)
+                self.send_to_palette('success', message)
             else:
-                _palette.sendInfoToHTML('error', f'Execution failed: {message}')
+                self.send_to_palette('error', f'Execution failed: {message}')
 
         except Exception as e:
             error_msg = f'Error executing code: {str(e)}'
-            _palette.sendInfoToHTML('error', error_msg)
+            self.send_to_palette('error', error_msg)
 
     def execute_code(self, code):
         """

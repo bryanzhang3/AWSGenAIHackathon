@@ -448,39 +448,56 @@
         // Handle messages from Python
         window.fusionJavaScriptHandler = {
             handle: function(action, data) {
+                // Parse the message if it's JSON
+                let message = data;
+                let messageAction = action;
+
+                // Check if this is our new format (action='message', data=JSON)
+                if (action === 'message' && typeof data === 'string') {
+                    try {
+                        const parsed = JSON.parse(data);
+                        messageAction = parsed.action;
+                        message = parsed.data;
+                    } catch (e) {
+                        // Not JSON, use as-is
+                        console.log('Non-JSON message:', action, data);
+                        return;
+                    }
+                }
+
                 // Re-enable send button
                 send.disabled = false;
                 send.textContent = 'Generate';
 
-                switch(action) {
+                switch(messageAction) {
                     case 'code':
-                        showCode(data);
+                        showCode(message);
                         break;
 
                     case 'success':
-                        addMessage('system', data);
+                        addMessage('system', message);
                         status.textContent = 'Success!';
                         setTimeout(() => status.textContent = 'Ready', 2000);
                         break;
 
                     case 'error':
-                        addMessage('error', data);
+                        addMessage('error', message);
                         status.textContent = 'Error';
                         setTimeout(() => status.textContent = 'Ready', 3000);
                         break;
 
                     case 'loading':
-                        showLoading(data);
-                        status.textContent = data;
+                        showLoading(message);
+                        status.textContent = message;
                         break;
 
                     case 'status':
-                        addMessage('system', data);
+                        addMessage('system', message);
                         status.textContent = 'Ready';
                         break;
 
                     default:
-                        console.log('Unknown action:', action, data);
+                        console.log('Unknown action:', messageAction, message);
                 }
             }
         };
