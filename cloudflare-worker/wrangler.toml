@@ -16,7 +16,7 @@ script_name = "vibecad-ai-agent"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["ConversationState"]
+new_sqlite_classes = ["ConversationState"]
 
 # Environment variables (set via wrangler secret)
 # wrangler secret put ONSHAPE_ACCESS_KEY
