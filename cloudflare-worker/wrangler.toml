@@ -1,0 +1,41 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "vibecad-ai-agent"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Durable Objects for conversation state
+[[durable_objects.bindings]]
+name = "CONVERSATIONS"
+class_name = "ConversationState"
+script_name = "vibecad-ai-agent"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ConversationState"]
+
+# Environment variables (set via wrangler secret)
+# wrangler secret put ONSHAPE_ACCESS_KEY
+# wrangler secret put ONSHAPE_SECRET_KEY
+
+# Development configuration
+[env.dev]
+name = "vibecad-ai-agent-dev"
+
+# Production configuration
+[env.production]
+name = "vibecad-ai-agent"
+routes = [
+  { pattern = "vibecad.yourdomain.com/*", custom_domain = true }
+]
+
+# Build configuration
+[build]
+command = "npm install && npm run build"
+
+[build.upload]
+format = "service-worker"
