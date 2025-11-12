@@ -206,6 +206,63 @@ export const TOOLS: Tool[] = [
 		},
 	},
 	{
+		name: 'send_to_fusion360',
+		description: 'Sends the OpenSCAD code to Fusion 360 to create an actual 3D model. Use this after validating the code.',
+		parameters: {
+			type: 'object',
+			properties: {
+				code: {
+					type: 'string',
+					description: 'The OpenSCAD code to send to Fusion 360',
+				},
+				description: {
+					type: 'string',
+					description: 'A brief description of what this model is',
+				},
+			},
+			required: ['code', 'description'],
+		},
+		execute: async (params: { code: string; description: string }, env: any) => {
+			// Check if FUSION360_API_URL is set
+			const fusion360Url = env.FUSION360_API_URL || 'http://localhost:3001/api/fusion/generate';
+
+			try {
+				// Send to Fusion 360 backend
+				const response = await fetch(fusion360Url, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						message: `Create this design: ${params.description}\n\nOpenSCAD code:\n${params.code}`,
+					}),
+				});
+
+				if (!response.ok) {
+					return {
+						success: false,
+						error: `Fusion 360 API returned status ${response.status}`,
+					};
+				}
+
+				const result = await response.json() as any;
+
+				return {
+					success: true,
+					message: 'Successfully sent to Fusion 360! The model should appear in your Fusion 360 window.',
+					fusion360Response: result,
+					modelUrl: result?.modelUrl || 'Check Fusion 360 application',
+				};
+			} catch (error) {
+				return {
+					success: false,
+					error: `Failed to connect to Fusion 360: ${error instanceof Error ? error.message : String(error)}`,
+					note: 'Make sure Fusion 360 backend is running and accessible',
+				};
+			}
+		},
+	},
+	{
 		name: 'create_task_plan',
 		description: 'Creates a multi-step plan for complex CAD design tasks.',
 		parameters: {
@@ -278,10 +335,11 @@ AGENT WORKFLOW:
 2. If complex, use create_task_plan to break it down
 3. Generate the OpenSCAD code
 4. Use validate_openscad to check for errors
-5. Use analyze_design to understand the design
-6. Use suggest_improvements for optimization tips
-7. If validation fails, fix the code and retry
-8. Present the final design with analysis
+5. If validation fails, fix the code and retry
+6. Use analyze_design to understand the design
+7. Use suggest_improvements for optimization tips
+8. Use send_to_fusion360 to create the actual 3D model in Fusion 360
+9. Present the final design with analysis and Fusion 360 confirmation
 
 TOOL CALLING FORMAT:
 To use a tool, output in this format:

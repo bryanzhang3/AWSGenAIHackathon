@@ -18,7 +18,13 @@ script_name = "vibecad-ai-agent"
 tag = "v1"
 new_sqlite_classes = ["ConversationState"]
 
-# Environment variables (set via wrangler secret)
+# Environment variables (set via wrangler secret or vars)
+# For Fusion 360 integration (optional - defaults to localhost:3001)
+# Set this if your Fusion 360 backend is accessible via public URL
+[vars]
+FUSION360_API_URL = "http://localhost:3001/api/fusion/generate"
+
+# Secrets (set via wrangler secret put)
 # wrangler secret put ONSHAPE_ACCESS_KEY
 # wrangler secret put ONSHAPE_SECRET_KEY
 
