@@ -1,7 +1,9 @@
 /**
  * Cloudflare AI Agent for VibeCAD
- * Text-to-CAD generation using Workers AI (Llama 3.3)
+ * Autonomous CAD design agent with tool calling and multi-step planning
  */
+
+import { runAgentLoop, AGENT_SYSTEM_PROMPT, TOOLS, executeTools } from './agent';
 
 export interface Env {
 	AI: any; // Workers AI binding
@@ -9,38 +11,6 @@ export interface Env {
 	ONSHAPE_ACCESS_KEY: string;
 	ONSHAPE_SECRET_KEY: string;
 }
-
-// System prompt for CAD generation
-const SYSTEM_PROMPT = `You are an expert CAD designer and OpenSCAD programmer. Your job is to help users create 3D CAD models by generating OpenSCAD code based on their natural language descriptions.
-
-CRITICAL RULES:
-1. ALWAYS generate OpenSCAD code, NEVER raw STL data
-2. Use proper OpenSCAD syntax with primitives like cylinder(), cube(), sphere()
-3. Use transformations: translate(), rotate(), scale()
-4. Use boolean operations: union(), difference(), intersection()
-5. Create parametric designs with variables when appropriate
-6. Wrap your OpenSCAD code in \`\`\`openscad code blocks
-
-OPENSCAD BASICS:
-- cylinder(h=height, r=radius, center=true/false)
-- cube([width, depth, height], center=true/false)
-- sphere(r=radius)
-- translate([x, y, z]) object;
-- rotate([x_deg, y_deg, z_deg]) object;
-- union() { object1; object2; }
-- difference() { object1; object2; }
-
-EXAMPLE - Simple gear:
-\`\`\`openscad
-module gear(teeth=10, radius=20, height=5) {
-    linear_extrude(height=height) {
-        circle(r=radius);
-    }
-}
-gear(teeth=15, radius=30, height=10);
-\`\`\`
-
-Always explain what your design does and provide clean, well-commented OpenSCAD code.`;
 
 export default {
 	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -59,17 +29,39 @@ export default {
 
 		// Health check
 		if (url.pathname === '/health') {
-			return new Response(JSON.stringify({ status: 'ok' }), {
+			return new Response(JSON.stringify({ status: 'ok', agent: 'autonomous' }), {
 				headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 			});
 		}
 
-		// Chat endpoint
+		// List available tools
+		if (url.pathname === '/api/tools') {
+			return new Response(
+				JSON.stringify({
+					tools: TOOLS.map(t => ({
+						name: t.name,
+						description: t.description,
+						parameters: t.parameters,
+					})),
+					agentCapabilities: [
+						'Multi-step planning',
+						'Autonomous task execution',
+						'Code validation',
+						'Design analysis',
+						'Improvement suggestions',
+					],
+				}),
+				{ headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+			);
+		}
+
+		// Chat endpoint with autonomous agent
 		if (url.pathname === '/api/chat' && request.method === 'POST') {
 			try {
-				const { message, conversationId } = await request.json() as {
+				const { message, conversationId, useAgent = true } = await request.json() as {
 					message: string;
-					conversationId?: string
+					conversationId?: string;
+					useAgent?: boolean;
 				};
 
 				// Get or create conversation state using Durable Object
@@ -85,26 +77,44 @@ export default {
 				);
 				const history = await historyResponse.json() as Array<{ role: string; content: string }>;
 
-				// Add new message to history
-				history.push({ role: 'user', content: message });
+				let assistantMessage: string;
+				let agentMetadata: any = {};
 
-				// Prepare messages for Llama
-				const messages = [
-					{ role: 'system', content: SYSTEM_PROMPT },
-					...history
-				];
+				if (useAgent) {
+					// Run autonomous agent loop
+					const agentResult = await runAgentLoop(message, [...history], env, 5);
+					assistantMessage = agentResult.response;
+					agentMetadata = {
+						iterations: agentResult.iterations,
+						toolsUsed: agentResult.toolsUsed,
+						agentMode: true,
+					};
+				} else {
+					// Simple single-shot response
+					const messages = [
+						{ role: 'system', content: AGENT_SYSTEM_PROMPT },
+						...history,
+						{ role: 'user', content: message }
+					];
 
-				// Call Workers AI with Llama 3.3
-				const response = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
-					messages,
-					stream: false,
-					max_tokens: 2048,
-					temperature: 0.7,
-				});
+					const response = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+						messages,
+						stream: false,
+						max_tokens: 3000,
+						temperature: 0.7,
+					});
 
-				const assistantMessage = response.response || response.result?.response || '';
+					assistantMessage = response.response || response.result?.response || '';
+				}
 
-				// Save assistant response to conversation history
+				// Save conversation
+				await conversation.fetch(
+					new Request('http://internal/add', {
+						method: 'POST',
+						body: JSON.stringify({ role: 'user', content: message }),
+					})
+				);
+
 				await conversation.fetch(
 					new Request('http://internal/add', {
 						method: 'POST',
@@ -122,6 +132,7 @@ export default {
 						conversationId: id.toString(),
 						openscadCode,
 						timestamp: new Date().toISOString(),
+						...agentMetadata,
 					}),
 					{
 						headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -168,7 +179,7 @@ export default {
 
 				// Prepare messages
 				const messages = [
-					{ role: 'system', content: SYSTEM_PROMPT },
+					{ role: 'system', content: AGENT_SYSTEM_PROMPT },
 					...history
 				];
 

@@ -63,7 +63,7 @@ export function Chat() {
     setStreamingContent("")
 
     try {
-      const response = await fetch(`${API_URL}/api/chat/stream`, {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,54 +78,19 @@ export function Chat() {
         throw new Error(`API request failed with status ${response.status}`)
       }
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
+      const data = await response.json()
 
-      if (!reader) {
-        throw new Error("No response body")
+      // Add assistant message
+      if (data.response) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.response },
+        ])
       }
 
-      let accumulatedContent = ""
-
-      while (true) {
-        const { done, value } = await reader.read()
-
-        if (done) break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split("\n")
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.slice(6))
-
-              if (data.content && !data.done) {
-                accumulatedContent += data.content
-                setStreamingContent(accumulatedContent)
-              } else if (data.done) {
-                // Finalize the message
-                if (accumulatedContent) {
-                  setMessages((prev) => [
-                    ...prev,
-                    { role: "assistant", content: accumulatedContent },
-                  ])
-                }
-
-                // Save conversation ID
-                if (data.conversationId) {
-                  setConversationId(data.conversationId)
-                }
-
-                setStreamingContent("")
-              } else if (data.error) {
-                throw new Error(data.error)
-              }
-            } catch (parseError) {
-              console.error("Error parsing SSE data:", parseError)
-            }
-          }
-        }
+      // Save conversation ID
+      if (data.conversationId) {
+        setConversationId(data.conversationId)
       }
     } catch (error) {
       console.error("Error calling API:", error)
